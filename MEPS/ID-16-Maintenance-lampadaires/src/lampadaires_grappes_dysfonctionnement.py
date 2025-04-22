@@ -23,21 +23,6 @@ import math
 
 from preprocessing_lampadaires import preprocess_lampadaires_prise
 
-############ lecture et preprocessing
-df_prise = preprocess_lampadaires_prise(keep_comments=True)
-
-# projette sur un référentiel métrique
-df_prise.to_crs("EPSG:32631", inplace=True)
-
-nb_dysfonctionnels = df_prise[df_prise["est_fonctionnel"] == 0].shape[0]
-df_prise.loc[:, "x"], df_prise.loc[:, "y"] = df_prise.geometry.x, df_prise.geometry.y
-
-
-# ne garde que les lampadaires dysfonctionnels sur réseaux
-df_prise = df_prise[df_prise["type"] == "Réseaux"].copy()
-df_prise = df_prise[df_prise["est_fonctionnel"] == 0].copy()
-
-
 def cluster_and_filter(df, eps, min_cluster_size):
     """
     Applique DBSCAN et filtre les petits clusters.
@@ -66,23 +51,48 @@ def cluster_and_filter(df, eps, min_cluster_size):
 
     return df
 
-####### Approche différenciée Lomé vs reste
-df_lome, df_hors_lome = df_prise[df_prise["prefecture"] == "Golfe"],\
-                        df_prise[df_prise["prefecture"] != "Golfe"]    
+def find_grappes(save_file=False):
+    """
+    Trouve les grappes de dysfonctionnement dans le parc
+    """
+    df_prise = preprocess_lampadaires_prise(keep_comments=True)
 
-# Paramètres
-params = [
-    {"df": df_lome, "eps": 45,  "min_size": 5},
-    {"df": df_hors_lome, "eps": 110, "min_size": 4}
-]
+    # projette sur un référentiel métrique
+    df_prise.to_crs("EPSG:32631", inplace=True)
 
-# Traitement
-df_final = gpd.GeoDataFrame(pd.concat([
-    cluster_and_filter(p["df"], p["eps"], p["min_size"])
-    for p in params
-], ignore_index=True))
+    nb_dysfonctionnels = df_prise[df_prise["est_fonctionnel"] == 0].shape[0]
+    df_prise.loc[:, "x"], df_prise.loc[:, "y"] = df_prise.geometry.x, df_prise.geometry.y
+
+
+    # ne garde que les lampadaires dysfonctionnels sur réseaux
+    df_prise = df_prise[df_prise["type"] == "Réseaux"].copy()
+    df_prise = df_prise[df_prise["est_fonctionnel"] == 0].copy()
+    
+    ####### Approche différenciée Lomé vs reste
+    df_lome, df_hors_lome = df_prise[df_prise["prefecture"] == "Golfe"],\
+                            df_prise[df_prise["prefecture"] != "Golfe"]    
+
+    # Paramètres
+    PARAMS = [
+        {"df": df_lome, "eps": 45,  "min_size": 5},
+        {"df": df_hors_lome, "eps": 110, "min_size": 4}
+    ]
+
+    # Traitement
+    df_final = gpd.GeoDataFrame(pd.concat([
+        cluster_and_filter(p["df"], p["eps"], p["min_size"])
+        for p in PARAMS
+    ], ignore_index=True))
+
+    if save_file:
+        df_final.to_file("./data/derived/grappes_lampadaires_prise.gpkg")
+
+    return df_final, nb_dysfonctionnels
+
 
 ######### Statistiques ##########
+
+df_final, nb_dysfonctionnels = find_grappes()
 
 print("Nombre de grappes : ", len(df_final["cluster"].unique()))
 print(
@@ -110,6 +120,3 @@ print(
     f"soit {100 * nb_lampadaires_in_big_clusters / nb_dysfonctionnels:.2f}% "
     f"des lampadaires dysfonctionnels"
 )
-
-
-df_final.to_file("./data/derived/grappes_lampadaires_prise.gpkg")

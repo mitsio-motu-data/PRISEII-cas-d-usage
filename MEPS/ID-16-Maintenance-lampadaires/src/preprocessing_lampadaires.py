@@ -42,6 +42,7 @@ def rename_columns_prise(df):
         "batiment_nom": "batiment",
         "lampadaire_type": "type",
         "est_fonctionnel": "est_fonctionnel",
+        "annee" : "annee",
         "geometry": "geometry",
     }
 
@@ -71,6 +72,7 @@ def preprocess_lampadaires_prise(path=PATH_PRISE, keep_comments=False):
             "non_fonctionenel",
             "fonction_nsp",
             "ampoules_type",
+            "annee",
             "geometry",
         ]
     
