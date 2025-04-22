@@ -89,7 +89,7 @@ gdf_carte = gdf_carte.set_crs(df_pref.crs)
 
 gdf_carte[["%_dysf", "geometry"]].plot(
     column="%_dysf",
-    cmap="OrRd",
+    cmap="RdYlGn_r",
     legend=True,
     #legend_kwds={'label': "Pourcentage de lampadaires dysfonctionnels (%)", 'orientation': "horizontal"},
     figsize=(10, 10),
