@@ -8,7 +8,22 @@
 import geopandas as gpd
 import pandas as pd
 
-def preprocess_raccordables():
+
+def map_raccordables_to_agence(df_raccordables, df_agence):
+    """
+    Associe une agence à chaque zone raccordable, arbitrairement on choisit en 
+    cas de chevauchement 
+    """
+
+    join = gpd.sjoin_nearest(df_raccordables, df_agence[["agence_id", "geometry"]], how="left")
+
+
+    df_raccordables = join.drop_duplicates(subset="geometry")
+
+    return df_raccordables.drop(columns="index_right")
+
+
+def preprocess_raccordables(df_agence):
     """
     Dans le fichier original il n'y a qu'une seule géométrie pour toutes les zones
     raccordables, on la splitte en lignes simples
@@ -23,58 +38,43 @@ def preprocess_raccordables():
 
     gdf_polygons = gpd.GeoDataFrame(geometry=simple_polygons, crs=df_raccordable.crs)
 
-    return gdf_polygons
+    df_raccordable = map_raccordables_to_agence(gdf_polygons, df_agence)
+
+    return df_raccordable
 
 def preprocess_agences():
-    """
-    Élargit uniquement les bords extérieurs des agences pour mieux couvrir la frontière du pays,
-    sans modifier les limites internes entre agences.
-    """
+
     df_agence = gpd.read_file("./data/agence_resultats_joint.gpkg")
     df_agence["agence_id"] = df_agence.index
 
-    # 1. Calculer l'union de toutes les agences (la forme totale)
-    union_geom = df_agence.unary_union
-
-    # 2. Buffer sur l'union (ex : +50m pour élargir)
-    union_buffered = union_geom.buffer(3_000)
-
-    # 3. Créer une couche de "complément" entre ancien contour et élargi
-    extension_geom = union_buffered.difference(union_geom)
-
-    # buffer sur les agences 
-    df_agence["geometry_buffer"] = df_agence["geometry"].buffer(3_000)
-
-    # prend l'intersection entre geometry buffer et l'union
-
-
-    # ajotue l'intersection aux agences initiales
-   
     return df_agence
 
 def preprocess_hexa(df_agence):
+    """
+    Assigne une agence à quasi chaque hexagone
+    """
     
     df_hexa = gpd.read_file("./data/hexagones_classifies.gpkg")[[
         "hex_id",
         "classification",
-        "commune_nom", 
-        "region_nom",
-        "prefecture_nom",
-        "canton_nom",
-        "pop_rgph_point_2024", 
-        "nombre_de_batiments",
-        "surface_batie_totale",
+        "pop_rgph_point_2024",
+        #"region_nom",
         "geometry"
     ]]
-    df_hexa = merge_agences(df_hexa, df_agence)
+    # simpler 
+
+    join = gpd.sjoin(df_hexa, df_agence[["agence_id", "geometry"]])
     
-    return df_hexa
+    # 1% des hex sur les bords
+    join = join.dropna(subset=["agence_id"]).drop(columns="index_right")
+    
+    return join
 
 def read_data():    
 
     df_agence = preprocess_agences()
 
-    df_raccordable = preprocess_raccordables()
+    df_raccordable = preprocess_raccordables(df_agence)
 
     df_hexa = preprocess_hexa(df_agence)
 
@@ -83,21 +83,17 @@ def read_data():
 
 def dissolve_hexagones(df_hexa):
     """
-    Rassembler les hexagone similaires de la même commune et agence
+    Rassembler les hexagone similaires de la même agence
     """
 
     # petit buffer
     df_hexa["geometry"] = df_hexa["geometry"].buffer(1)
 
     df_hexa_dissolved = df_hexa.dissolve(
-            by=["classification", "agence_id", "commune_nom"],
+            by=["classification", "agence_id"],
             aggfunc={
-                "region_nom": "first",
-                "prefecture_nom" :"first",
-                "canton_nom": "first",
+                #"region_nom": "first",
                 "pop_rgph_point_2024": "sum",
-                "nombre_de_batiments": "sum",
-                "surface_batie_totale": "sum",
             }
         ).reset_index()
 
@@ -118,17 +114,15 @@ def reclassify(df_hexa_dissolved, df_raccordable):
     df_classif = pd.concat([df_raccordable, 
                             df_hexa_restants], ignore_index=True)
 
-    #mapping_new_cat = {'raccordable': 'raccordable',
-    #                    'densification_rurale': 'extension',
-    #                    'densification_urbaine': '',
-    #                    'extension_rurale': '',
-    #                    'extension_urbaine': '',
-    #                    'zone_eloignee': ''}
+    mapping_new_cat = {'raccordable': 'Raccordable (< 60 m)',
+                        'densification_rurale': 'Densification (< 1 km)',
+                        'densification_urbaine': 'Densification (< 1 km)',
+                        'extension_rurale': 'Extension',
+                        'extension_urbaine': 'Densification ',
+                        'zone_eloignee': 'Solution off-grid'}
 
     df_classif["id"] = df_classif.index
     return df_classif
-
-
 
 
 def main():
@@ -137,11 +131,21 @@ def main():
 
     df_hexa_dissolved = dissolve_hexagones(df_hexa)
     df_classif = reclassify(df_hexa_dissolved, df_raccordable)
-    #df_classif = merge_agences(df_classif, df_agence)
-    return df_classif
+
+    return df_classif, df_agence
 
 
 if __name__ == "__main__":
 
-    df_classif = main()
+    df_classif, df_agence = main()
+
+    df_classif.to_crs("EPSG:4326").to_file("./data/final.geojson")
+
+    df_classif.drop(columns="geometry").to_csv('./data/tinga.csv', index=False)
+
+    df_agence.drop(columns=["geometry"])\
+        .fillna(0).to_csv("./data/resultats_par_agence.csv",
+                          index=False,
+                          decimal=",",
+                          sep=";")
 
