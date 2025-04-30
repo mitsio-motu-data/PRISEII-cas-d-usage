@@ -1,0 +1,12 @@
+**/*.pbix
+**/*.qgz
+**/*.ipynb
+**/*.pdf
+**/*.png
+**/img
+**/data/
+**/notebooks/
+__pycache__/
+.vscode/
+**/tippecanoe/
+**/qgis/
