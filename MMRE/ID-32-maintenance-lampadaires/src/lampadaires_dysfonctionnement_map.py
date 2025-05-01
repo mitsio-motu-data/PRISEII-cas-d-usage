@@ -1,10 +1,16 @@
 ################################################################################
 # Script Name  : lampadaires_dysfonctionnement_map.py
-# Description  : Edition d'une carte pour le policy brief
+# Description  : Edition des cartes pour le policy brief
 # Auteur       : basile@mitsiomotu.com
 # Date : 2025/04/23
 ################################################################################
-
+"""
+Cartes dysfonctionnement par préfecture
+- y.c. grappes
+- hors grappes
+- hors grappes solaires
+- hors grappes réseaux
+"""
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,6 +38,8 @@ df_pref = gpd.read_file(PATH_FILE_ADMIN, layer="prefectures")
 df_hors_grappe["est_fonctionnel"] = df_hors_grappe["est_fonctionnel"].fillna(0.5)  
 
 
+df_hors_grappe = df_hors_grappe[df_hors_grappe["type"] == "Solaire"]
+
 df_carte = df_hors_grappe.groupby('prefecture')\
                     .agg({
                         "est_fonctionnel": ["count", "sum"],   
@@ -54,7 +62,6 @@ gdf_carte[["%_dysf", "geometry"]].plot(
     column="%_dysf",
     cmap="viridis",
     legend=True,
-    #legend_kwds={'label': "Pourcentage de lampadaires dysfonctionnels (%)", 'orientation': "horizontal"},
     figsize=(10, 10),
 )
 
@@ -62,3 +69,5 @@ gdf_carte[["%_dysf", "geometry"]].plot(
 plt.title("% de lampadaires dysfonctionnels (hors grappe)")
 
 plt.axis("off")
+
+plt.show()

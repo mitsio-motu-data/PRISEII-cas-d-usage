@@ -216,13 +216,22 @@ def get_and_plot_wordcloud(comments):
     plt.show()
 
 
-
-if __name__ == "__main__":
+def main():
 
     df_study = get_and_filter_data()
 
-    df_study = categorize_comments(df_study)
+    df_study = categorize_comment(df_study)
     
+    return df_study
+
+if __name__ == "__main__":
+
+    #df_study = get_and_filter_data()
+
+    #df_study = categorize_comments(df_study)
+    
+    df_study = main()
+
     # enleve ceux qui n'ont pas de catégorie (150)
 
     df_study = df_study[~df_study["cat"].isna()]
@@ -247,3 +256,4 @@ if __name__ == "__main__":
 
     # Afficher le tableau final
     print(df_summary)
+

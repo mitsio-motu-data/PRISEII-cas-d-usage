@@ -89,7 +89,7 @@ gdf_carte = gdf_carte.set_crs(df_pref.crs)
 
 gdf_carte[["%_dysf", "geometry"]].plot(
     column="%_dysf",
-    cmap="RdYlGn_r",
+    cmap="viridis",
     legend=True,
     #legend_kwds={'label': "Pourcentage de lampadaires dysfonctionnels (%)", 'orientation': "horizontal"},
     figsize=(10, 10),
@@ -127,11 +127,10 @@ print(temp)
 print("Test H0 : p_led = p_hps:")
 
 n_dys = temp.loc[["HPS/LPS", "LED"], "sum"]
-n_dys = temp.loc[["HPS/LPS", "LED"], "count"]
+n_obs = temp.loc[["HPS/LPS", "LED"], "count"]
 
 stat, pval = proportions_ztest(n_dys, n_obs)
-print(f"z = {stat:.2f}, p = {pval:.4f}")
-
+print(f"z = {stat:.2f}, p = {pval:.8f}")
 
 
 temp = df_lampa.groupby(["ampoules_type", "type"])\
@@ -165,6 +164,14 @@ print(f"z = {stat:.2f}, p = {pval:.4f}")
 print("Test Réseaux H0 : p_led = p_hps")
 
 types = [("HPS/LPS", "Réseaux"), ("LED", "Réseaux")]
+n_dys =  np.array([temp.loc[t][["sum"]].values for t in types]).flatten()
+n_obs = np.array([temp.loc[t][["count"]].values for t in types]).flatten()
+
+stat, pval = proportions_ztest(n_dys, n_obs)
+print(f"z = {stat:.2f}, p = {pval:.4f}")
+
+print("Test Solaire Ho : p_led = p_hps")
+types = [("HPS/LPS", "Solaire"), ("LED", "Solaire")]
 n_dys =  np.array([temp.loc[t][["sum"]].values for t in types]).flatten()
 n_obs = np.array([temp.loc[t][["count"]].values for t in types]).flatten()
 
@@ -213,5 +220,13 @@ temp = df_lampa.groupby("est_urbain").agg({
 temp["%_dysf"] = round(100 * (temp["count"] -temp["sum"]) / temp["count"], 2)
 
 print(temp)
+
+n_obs = temp.loc[:, "count"].values
+n_dys = temp.loc[:, "sum"].values
+
+stat, p_val = proportions_ztest(n_dys, n_obs)
+
+print(f"p-value {p_val:.4f}")
+
 
 print(">>> Taux de dysfonctionnement comparables en aire urbaine et rurale")
