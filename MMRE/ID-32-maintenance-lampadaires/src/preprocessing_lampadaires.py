@@ -12,7 +12,7 @@ from shapely.geometry import Point
 
 PATH_PRISE = "./data/raw/3.Lampadaires/ener_lampadaires.gpkg"
 PATH_SUNNA = "./data/raw/3.Lampadaires/2025-04-07_Extract_Base 50 000_MM pour QGIS.csv"
-PATH_FINAL = "./data/derived/lampadaires.gpkg"
+PATH_FINAL = "./data/dashboard/lampadaires.gpkg"
 
 
 def clean_fonctionnel(df):
@@ -39,10 +39,10 @@ def rename_columns_prise(df):
         "prefecture": "prefecture",
         "canton": "canton",
         "commune": "commune",
-        "batiment_nom": "batiment",
+        #"batiment_nom": "batiment",
         "lampadaire_type": "type",
         "est_fonctionnel": "est_fonctionnel",
-        "annee" : "annee",
+        #"annee" : "annee",
         "geometry": "geometry",
     }
 
@@ -67,12 +67,12 @@ def preprocess_lampadaires_prise(path=PATH_PRISE, keep_comments=False):
             "canton",
             "id",
             "lampadaire_type",
-            "batiment_nom",
+            #"batiment_nom",
             "fonctionnel",
             "non_fonctionenel",
             "fonction_nsp",
             "ampoules_type",
-            "annee",
+            #"annee",
             "geometry",
         ]
     
@@ -183,4 +183,4 @@ def preprocess_lampadaires():
     return df
 
 if __name__ == "__main__":
-    preprocess_lampadaires()
+    df = preprocess_lampadaires()

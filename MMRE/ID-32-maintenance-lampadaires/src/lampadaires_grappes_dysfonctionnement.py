@@ -55,7 +55,7 @@ def find_grappes(save_file=False):
     """
     Trouve les grappes de dysfonctionnement dans le parc
     """
-    df_prise = preprocess_lampadaires_prise(keep_comments=True)
+    df_prise = preprocess_lampadaires_prise(keep_comments=False)
 
     # projette sur un référentiel métrique
     df_prise.to_crs("EPSG:32631", inplace=True)
